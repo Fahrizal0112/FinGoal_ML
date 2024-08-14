@@ -5,7 +5,6 @@ from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 import yfinance as yf
 from datetime import datetime
-import calendar
 
 app = Flask(__name__)
 
@@ -50,14 +49,29 @@ def forecast():
 
     last_date = pd.to_datetime(stock_data.index[-1])
     future_dates = [last_date + pd.DateOffset(months=i) for i in range(1, num_future_steps + 1)]
+
+    # Calculate monthly returns
+    monthly_returns = [
+        ((future_predictions[i].item() - future_predictions[i - 1].item()) / future_predictions[i - 1].item()) * 100
+        for i in range(1, len(future_predictions))
+    ]
+    monthly_returns = [0.0] + monthly_returns
+
+    future_predictions_list = future_predictions.flatten().tolist()
     
+    monthly_returns_list = [f"{return_value:.2f}%" for return_value in monthly_returns]
+
     response_data = {
         'ticker': ticker,
         'future_dates': [date.strftime('%Y-%m') for date in future_dates],
-        'predicted_prices': future_predictions.flatten().tolist()
+        'predicted_prices': future_predictions_list,
+        'monthly_returns': monthly_returns_list
     }
 
     return jsonify(response_data)
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
